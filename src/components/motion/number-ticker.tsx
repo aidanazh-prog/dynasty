@@ -104,7 +104,7 @@ export function NumberTicker({
       className={cn("inline-flex items-baseline tabular-nums", className)}
     >
       <span className="sr-only">{readableText}</span>
-      <span aria-hidden="true" className="inline-flex items-baseline">
+      <span aria-hidden="true" className="inline-flex select-none items-baseline">
         {prefix ? <span>{prefix}</span> : null}
         {glyphs.map(({ char, id }, i) => {
           const isDigit = /\d/.test(char);
