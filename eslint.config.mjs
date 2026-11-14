@@ -7,6 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // сторонние компоненты beUI (копируются из реестра как есть)
+    "src/components/motion/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",

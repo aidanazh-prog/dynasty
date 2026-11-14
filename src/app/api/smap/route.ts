@@ -1,0 +1,111 @@
+// NASA SMAP L4 (SPL4SMGP v008, NSIDC) — точные значения влажности почвы в ячейке 9 км под полем.
+// Гранулы ищем в открытом CMR, значения вырезаем через облачный OPeNDAP NASA с токеном Earthdata
+// (EARTHDATA_TOKEN в .env.local — только на сервере). Кеш в памяти по ячейке сетки.
+import type { NextRequest } from "next/server";
+
+const COLLECTION = "C3480440870-NSIDC_CPRD";
+const CMR = "https://cmr.earthdata.nasa.gov/search/granules.umm_json";
+const MONTHS = 24;
+
+type Sample = { date: string; root: number | null; surface: number | null };
+export type SmapResponse = {
+  source: "opendap";
+  cell: { row: number; col: number; lat: number | null; lon: number | null };
+  latest: Sample | null;
+  months: Sample[];
+};
+
+// EASE-Grid 2.0 Global, 9 км (EPSG:6933) — сетка SMAP L4
+function easeCell(lat: number, lon: number) {
+  const a = 6378137.0, e2 = 0.0066943799901413165, e = Math.sqrt(e2), ps = (30 * Math.PI) / 180;
+  const k0 = Math.cos(ps) / Math.sqrt(1 - e2 * Math.sin(ps) ** 2);
+  const s = Math.sin((lat * Math.PI) / 180);
+  const q = (1 - e2) * (s / (1 - e2 * s * s) - (1 / (2 * e)) * Math.log((1 - e * s) / (1 + e * s)));
+  const x = a * k0 * ((lon * Math.PI) / 180), y = (a * q) / (2 * k0);
+  const cell = 9008.055210146, x0 = -17367530.44516138, y0 = 7314540.83011823;
+  return { row: Math.floor((y0 - y) / cell), col: Math.floor((x - x0) / cell) };
+}
+
+async function granuleFor(fromIso: string, toIso: string, latestFirst = false): Promise<{ id: string; date: string } | null> {
+  const url = `${CMR}?collection_concept_id=${COLLECTION}&temporal=${fromIso},${toIso}&page_size=1${latestFirst ? "&sort_key=-start_date" : ""}`;
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) return null;
+  const item = (await r.json()).items?.[0]?.umm;
+  if (!item) return null;
+  const od = (item.RelatedUrls as { URL: string; Subtype?: string }[]).find((u) => u.Subtype === "OPENDAP DATA")?.URL;
+  const date = item.TemporalExtent?.RangeDateTime?.BeginningDateTime?.slice(0, 10) ?? fromIso.slice(0, 10);
+  return od ? { id: od, date } : null;
+}
+
+async function readCell(opendap: string, row: number, col: number, token: string) {
+  const v = (name: string) => `${encodeURIComponent(name)}%5B${row}%5D%5B${col}%5D`;
+  const url = `${opendap}.ascii?${[v("/Geophysical_Data/sm_rootzone"), v("/Geophysical_Data/sm_surface"), v("cell_lat"), v("cell_lon")].join(",")}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", redirect: "follow" });
+  if (!r.ok) throw new Error(`OPeNDAP ${r.status}`);
+  const txt = await r.text();
+  const num = (key: string) => {
+    const m = txt.match(new RegExp(`${key.replace(/[/[\]]/g, "\\$&")}\\[0\\],\\s*([-\\d.eE]+)`));
+    const n = m ? parseFloat(m[1]) : NaN;
+    return Number.isFinite(n) && n >= 0 && n <= 1 ? n : null; // -9999 = нет данных
+  };
+  const coord = (key: string) => { const m = txt.match(new RegExp(`${key}\\[0\\],\\s*([-\\d.]+)`)); return m ? parseFloat(m[1]) : null; };
+  return { root: num("/Geophysical_Data/sm_rootzone"), surface: num("/Geophysical_Data/sm_surface"), lat: coord("cell_lat"), lon: coord("cell_lon") };
+}
+
+async function pool<T>(tasks: (() => Promise<T>)[], n = 6) {
+  const out: T[] = new Array(tasks.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: n }, async () => { while (i < tasks.length) { const k = i++; out[k] = await tasks[k](); } }));
+  return out;
+}
+
+const cache = new Map<string, Promise<SmapResponse>>();
+
+async function load(row: number, col: number, token: string): Promise<SmapResponse> {
+  const now = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 19) + "Z";
+  const ago = (days: number) => new Date(now.getTime() - days * 864e5);
+
+  let cellLat: number | null = null, cellLon: number | null = null;
+  const sample = async (g: { id: string; date: string } | null): Promise<Sample | null> => {
+    if (!g) return null;
+    try {
+      const c = await readCell(g.id, row, col, token);
+      if (cellLat == null && c.lat != null) { cellLat = c.lat; cellLon = c.lon; }
+      return { date: g.date, root: c.root, surface: c.surface };
+    } catch { return null; }
+  };
+
+  const latestP = granuleFor(iso(ago(30)), iso(now), true).then(sample);
+  const monthDates = Array.from({ length: MONTHS }, (_, k) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (MONTHS - k), 15)));
+  const monthsP = pool(monthDates.map((d) => async () => {
+    const from = iso(d), to = iso(new Date(d.getTime() + 3 * 3600e3));
+    return (await sample(await granuleFor(from, to))) ?? { date: d.toISOString().slice(0, 10), root: null, surface: null };
+  }));
+  const [latest, months] = await Promise.all([latestP, monthsP]);
+  return { source: "opendap", cell: { row, col, lat: cellLat, lon: cellLon }, latest, months };
+}
+
+export async function GET(request: NextRequest) {
+  const token = process.env.EARTHDATA_TOKEN;
+  if (!token) return Response.json({ error: "EARTHDATA_TOKEN не задан" }, { status: 503 });
+  const lat = Number(request.nextUrl.searchParams.get("lat"));
+  const lon = Number(request.nextUrl.searchParams.get("lon"));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180) {
+    return Response.json({ error: "Нужны lat и lon" }, { status: 400 });
+  }
+  const { row, col } = easeCell(lat, lon);
+  const key = `${row}:${col}`;
+  if (!cache.has(key)) {
+    const p = load(row, col, token);
+    p.catch(() => cache.delete(key));
+    cache.set(key, p);
+  }
+  try {
+    const data = await cache.get(key)!;
+    if (!data.latest && data.months.every((m) => m.root == null)) cache.delete(key);
+    return Response.json(data, { headers: { "Cache-Control": "public, max-age=21600" } });
+  } catch (e) {
+    return Response.json({ error: String((e as Error).message) }, { status: 502 });
+  }
+}

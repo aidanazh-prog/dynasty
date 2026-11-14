@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# dynasty — Field Shift
 
-## Getting Started
+Карта полей Кыргызстана с историей культур и характеристиками поля по данным **AgroMap** и **NASA**
+(NASA Space Apps: *Field Shift — Adapting Farms with NASA Data*).
 
-First, run the development server:
+- Next.js 16, React 19, Tailwind 4, компоненты [beUI](https://beui.dev)
+- MapLibre GL (WebGL) + PMTiles: ~108 тыс. полей
+- Нажатие на поле → история культур, площадь, район, почва, расстояние до канала,
+  риск селей **NASA LHASA**, влажность почвы **NASA SMAP L4** (корневая зона и поверхность, ряд за 24 мес.)
 
+## Источники данных
+| Данные | Источник |
+|---|---|
+| Поля, культуры по годам, почвы, каналы, районы | AgroMap (agromap.gov.kg), открытый GeoServer WFS |
+| Риск оползней и селей | NASA LHASA, глобальная карта восприимчивости (~1 км) |
+| Влажность почвы | NASA SMAP L4 SPL4SMGP v008 (NSIDC), CMR + OPeNDAP; запасной путь — NASA GIBS |
+| Подложка | Esri World Imagery |
+
+## Запуск
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install                 # postinstall копирует воркер MapLibre в public/maplibre
+cp .env.example .env.local  # и вставьте свой Earthdata токен
+npm run build && npm start  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Данные (не хранятся в git)
+`public/data/` (тайлы полей, паспорта полей, сетка LHASA) генерируется скриптами из родительской папки проекта:
+`download_agromap.py` → `build_fields.py` → `build_web_data.py`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Earthdata токен
+Нужен для точных значений SMAP: https://urs.earthdata.nasa.gov → Profile → Generate Token.
+Токен используется только на сервере (`/api/smap`) и в браузер не попадает.
+Без токена влажность берётся приблизительно из NASA GIBS.
