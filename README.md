@@ -19,7 +19,6 @@
 ## Запуск
 ```bash
 npm install                 # postinstall копирует воркер MapLibre в public/maplibre
-cp .env.example .env.local  # и вставьте свой Earthdata токен
 npm run build && npm start  # http://localhost:3000
 ```
 
@@ -28,6 +27,6 @@ npm run build && npm start  # http://localhost:3000
 `download_agromap.py` → `build_fields.py` → `build_web_data.py`.
 
 ### Earthdata токен
-Нужен для точных значений SMAP: https://urs.earthdata.nasa.gov → Profile → Generate Token.
-Токен используется только на сервере (`/api/smap`) и в браузер не попадает.
-Без токена влажность берётся приблизительно из NASA GIBS.
+Уже прописан в `src/app/api/smap/route.ts` (истекает ~13.01.2027). Новый: https://urs.earthdata.nasa.gov → Profile → Generate Token —
+замените строку в коде или задайте переменную окружения `EARTHDATA_TOKEN`.
+Если токен не сработает, влажность берётся приблизительно из NASA GIBS.

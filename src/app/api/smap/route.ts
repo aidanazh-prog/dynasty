@@ -1,7 +1,11 @@
 // NASA SMAP L4 (SPL4SMGP v008, NSIDC) — точные значения влажности почвы в ячейке 9 км под полем.
 // Гранулы ищем в открытом CMR, значения вырезаем через облачный OPeNDAP NASA с токеном Earthdata
-// (EARTHDATA_TOKEN в .env.local — только на сервере). Кеш в памяти по ячейке сетки.
+// (токен ниже — используется только на сервере, в браузер не попадает). Кеш в памяти по ячейке сетки.
 import type { NextRequest } from "next/server";
+
+// Earthdata Login токен (NASA). Можно переопределить переменной окружения EARTHDATA_TOKEN. Истекает ~13.01.2027.
+const EARTHDATA_TOKEN =
+  "eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6ImRhbmNoaWsxIiwic3ViIjoiZGFuY2hpazEiLCJleHAiOjE3OTk4MzIyMzQsImlhdCI6MTc5NDY0ODIzNCwiaXNzIjoiaHR0cHM6Ly91cnMuZWFydGhkYXRhLm5hc2EuZ292IiwiaWRlbnRpdHlfcHJvdmlkZXIiOiJlZGxfb3BzIiwiYWNyIjoiZWRsIiwiYXNzdXJhbmNlX2xldmVsIjozfQ.3GILhYjuVgOPTBjWDE2t0zDL1Ak_n0wHNyFTyfc_6x6CCEae-olJ1MIiCUKdc391-1qldWTxk-bdGTHPd1v0sEAvQeD032KoXZz2WWUSbDAW1iuZBOjHWIjy71Pj4-kFrp-9rIxmhWXwIHsD0VdT6XXQEAgIc5wLT52AjU0VzsQfHwGIsXb09Vkk5ejgjX7QgWywRqwHi8pZ_bfJ6INRZkN12RS94n2unNvfDGEnnlEAUyt0NWAKTZJbpJIj6fCCM6A-QH9P-UxhVg2xK--LA1noEtdwi0qjnkXUJ6Dn0DWqUKQQuG-XbqBomaV9_75NVktmeul729rTpeADx0Q0oA";
 
 const COLLECTION = "C3480440870-NSIDC_CPRD";
 const CMR = "https://cmr.earthdata.nasa.gov/search/granules.umm_json";
@@ -87,8 +91,7 @@ async function load(row: number, col: number, token: string): Promise<SmapRespon
 }
 
 export async function GET(request: NextRequest) {
-  const token = process.env.EARTHDATA_TOKEN;
-  if (!token) return Response.json({ error: "EARTHDATA_TOKEN не задан" }, { status: 503 });
+  const token = process.env.EARTHDATA_TOKEN || EARTHDATA_TOKEN;
   const lat = Number(request.nextUrl.searchParams.get("lat"));
   const lon = Number(request.nextUrl.searchParams.get("lon"));
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180) {
