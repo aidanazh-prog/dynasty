@@ -1,7 +1,7 @@
-# dynasty — Field Shift
+# Dynasty
 
 Карта полей Кыргызстана с историей культур и характеристиками поля по данным **AgroMap** и **NASA**
-(NASA Space Apps: *Field Shift — Adapting Farms with NASA Data*).
+(NASA Space Apps Challenge, задача *Field Shift: Adapting Farms with NASA Data*).
 
 - Next.js 16, React 19, Tailwind 4, компоненты [beUI](https://beui.dev)
 - MapLibre GL (WebGL) + PMTiles: ~108 тыс. полей

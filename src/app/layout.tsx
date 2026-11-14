@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ variable: "--font-sans-app", subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "Field Shift — советник по севообороту",
-  description: "Фото поля → данные AgroMap и NASA → сценарии севооборота по доходу, воде и почве.",
+  title: "Dynasty — поля Кыргызстана и данные NASA",
+  description: "История и характеристики каждого поля Кыргызстана: AgroMap, NASA SMAP, NASA LHASA.",
 };
 
 export const viewport: Viewport = {
