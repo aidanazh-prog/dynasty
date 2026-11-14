@@ -90,7 +90,8 @@ export function getSmap(lat: number, lon: number): Promise<SmapSeries> {
 
 // точные значения через серверный маршрут (Earthdata токен + OPeNDAP)
 async function loadExact(lat: number, lon: number): Promise<SmapSeries> {
-  const r = await fetch(`/api/smap?lat=${lat}&lon=${lon}`);
+  // округляем до ~100 м: соседние клики попадают в один и тот же ответ CDN-кеша Vercel
+  const r = await fetch(`/api/smap?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`);
   if (!r.ok) throw new Error(`api/smap ${r.status}`);
   const d = await r.json();
   if (!d.latest && !d.months?.some((m: SmapSample) => m.root != null)) throw new Error("пусто");

@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
   try {
     const data = await cache.get(key)!;
     if (!data.latest && data.months.every((m) => m.root == null)) cache.delete(key);
-    return Response.json(data, { headers: { "Cache-Control": "public, max-age=21600" } });
+    return Response.json(data, { headers: { "Cache-Control": "public, max-age=21600, s-maxage=43200, stale-while-revalidate=86400" } });
   } catch (e) {
     return Response.json({ error: String((e as Error).message) }, { status: 502 });
   }

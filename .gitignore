@@ -41,8 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# большие данные (генерируются build_web_data.py)
-/public/data
 
 # воркер MapLibre копируется из node_modules при npm install (postinstall)
 /public/maplibre
