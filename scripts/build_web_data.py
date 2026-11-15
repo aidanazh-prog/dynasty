@@ -53,4 +53,12 @@ print("fields.pmtiles", round(os.path.getsize(out) / 1e6, 1), "MB;", len(g), "fi
 
 for f in ["lhasa.json", "lhasa_grid.bin", "lhasa_susceptibility.png"]:
     shutil.copy(os.path.join(B, "map", f), os.path.join(OUT, f))
+# контуры областей (упрощённые) для карты
+reg = pyogrio.read_dataframe(os.path.join(B, "geojson", "agro_region_raw.geojson"), columns=["pname_r"])
+reg["geometry"] = reg.geometry.simplify(0.003, preserve_topology=True)
+reg = reg.rename(columns={"pname_r": "name"})[["name", "geometry"]]
+rout = os.path.join(OUT, "regions.geojson")
+if os.path.exists(rout):
+    os.remove(rout)
+pyogrio.write_dataframe(reg, rout, driver="GeoJSON", layer_options={"COORDINATE_PRECISION": 4})
 print("ok")

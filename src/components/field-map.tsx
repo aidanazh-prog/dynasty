@@ -68,6 +68,8 @@ export const FieldMap = forwardRef<FieldMapHandle, Props>(function FieldMap({ on
             type: "image", url: "/data/lhasa_susceptibility.png",
             coordinates: [[69.2, 43.30006], [80.3, 43.30006], [80.3, 39.10006], [69.2, 39.10006]],
           },
+          // контуры 7 областей (AgroMap agro_region_raw, упрощены)
+          regions: { type: "geojson", data: "/data/regions.geojson" },
           fields: {
             type: "vector", url: `pmtiles://${window.location.origin}/data/fields.pmtiles`,
             attribution: "Поля: AgroMap · Риск селей: NASA LHASA · Влажность: NASA SMAP",
@@ -86,6 +88,16 @@ export const FieldMap = forwardRef<FieldMapHandle, Props>(function FieldMap({ on
           {
             id: "fields-line", type: "line", source: "fields", "source-layer": "fields", minzoom: 11,
             paint: { "line-color": colorExpr, "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.4, 16, 1.5] },
+          },
+          {
+            id: "regions-casing", type: "line", source: "regions",
+            layout: { "line-join": "round" },
+            paint: { "line-color": "rgba(0,0,0,0.55)", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 3, 12, 5] },
+          },
+          {
+            id: "regions-line", type: "line", source: "regions",
+            layout: { "line-join": "round" },
+            paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1.2, 12, 2.2], "line-dasharray": [3, 2] },
           },
           {
             id: "fields-selected", type: "line", source: "fields", "source-layer": "fields",
