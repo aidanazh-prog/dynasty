@@ -34,7 +34,7 @@ function History({ field }: { field: Field }) {
   return (
     <Card size="compact">
       <CardHeader>
-        <CardTitle as="h3">{field.id ? `История поля #${field.id}` : "История поля"}</CardTitle>
+        <CardTitle as="h3">История поля</CardTitle>
         <CardDescription>Культуры по годам · AgroMap</CardDescription>
       </CardHeader>
       <CardContent>

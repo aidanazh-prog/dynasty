@@ -77,21 +77,14 @@ function withMean(s: Omit<SmapSeries, "sameMonthMean">): SmapSeries {
   return { ...s, sameMonthMean: same.length ? same.reduce((a, b) => a + b, 0) / same.length : null };
 }
 
-const cache = new Map<string, Promise<SmapSeries>>();
+// без кеша: каждый раз свежие данные NASA
 export function getSmap(lat: number, lon: number): Promise<SmapSeries> {
-  const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
-  if (!cache.has(key)) {
-    const p = loadExact(lat, lon).catch(() => loadGibs(lat, lon));
-    p.catch(() => cache.delete(key));
-    cache.set(key, p);
-  }
-  return cache.get(key)!;
+  return loadExact(lat, lon).catch(() => loadGibs(lat, lon));
 }
 
 // точные значения через серверный маршрут (Earthdata токен + OPeNDAP)
 async function loadExact(lat: number, lon: number): Promise<SmapSeries> {
-  // округляем до ~100 м: соседние клики попадают в один и тот же ответ CDN-кеша Vercel
-  const r = await fetch(`/api/smap?lat=${lat.toFixed(3)}&lon=${lon.toFixed(3)}`);
+  const r = await fetch(`/api/smap?lat=${lat}&lon=${lon}`, { cache: "no-store" });
   if (!r.ok) throw new Error(`api/smap ${r.status}`);
   const d = await r.json();
   if (!d.latest && !d.months?.some((m: SmapSample) => m.root != null)) throw new Error("пусто");

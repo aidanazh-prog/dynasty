@@ -1,6 +1,6 @@
 // NASA SMAP L4 (SPL4SMGP v008, NSIDC) — точные значения влажности почвы в ячейке 9 км под полем.
 // Гранулы ищем в открытом CMR, значения вырезаем через облачный OPeNDAP NASA с токеном Earthdata
-// (токен ниже — используется только на сервере, в браузер не попадает). Кеш в памяти по ячейке сетки.
+// (токен ниже — используется только на сервере, в браузер не попадает). Без кеша: каждый запрос идёт в NASA.
 import type { NextRequest } from "next/server";
 
 // Earthdata Login токен (NASA). Можно переопределить переменной окружения EARTHDATA_TOKEN. Истекает ~13.01.2027.
@@ -63,8 +63,6 @@ async function pool<T>(tasks: (() => Promise<T>)[], n = 6) {
   return out;
 }
 
-const cache = new Map<string, Promise<SmapResponse>>();
-
 async function load(row: number, col: number, token: string): Promise<SmapResponse> {
   const now = new Date();
   const iso = (d: Date) => d.toISOString().slice(0, 19) + "Z";
@@ -98,16 +96,9 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "Нужны lat и lon" }, { status: 400 });
   }
   const { row, col } = easeCell(lat, lon);
-  const key = `${row}:${col}`;
-  if (!cache.has(key)) {
-    const p = load(row, col, token);
-    p.catch(() => cache.delete(key));
-    cache.set(key, p);
-  }
   try {
-    const data = await cache.get(key)!;
-    if (!data.latest && data.months.every((m) => m.root == null)) cache.delete(key);
-    return Response.json(data, { headers: { "Cache-Control": "public, max-age=21600, s-maxage=43200, stale-while-revalidate=86400" } });
+    const data = await load(row, col, token);
+    return Response.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return Response.json({ error: String((e as Error).message) }, { status: 502 });
   }

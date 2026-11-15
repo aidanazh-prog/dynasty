@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { LocateFixed, Mountain } from "lucide-react";
 import { Button } from "@/components/motion/button/base";
-import { BottomSheet } from "@/components/motion/bottom-sheet";
+import { FieldSheet } from "@/components/field-sheet";
 import { Drawer } from "@/components/motion/drawer";
 import { AnimatedToastStack, useAnimatedToastStack } from "@/components/motion/animated-toast-stack";
 import { FieldPanel } from "@/components/field-panel";
@@ -95,9 +95,9 @@ export function AppShell() {
           {content}
         </Drawer>
       ) : (
-        <BottomSheet open={open} onOpenChange={setOpen} snapPoints={[0.55, 0.94]} title="Поле" modal={false}>
+        <FieldSheet open={open} onOpenChange={setOpen} title={field?.id ? `Поле #${field.id}` : "Поле"}>
           {content}
-        </BottomSheet>
+        </FieldSheet>
       )}
 
       <AnimatedToastStack toasts={toasts} onDismiss={dismissToast} position="top-center" fixed />
